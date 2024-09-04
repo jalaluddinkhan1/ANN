@@ -1,0 +1,132 @@
+
+---
+title: "Assignment2_Jalaluddin_032"
+author: "Jalaluddinkhan_2023MDS07ALA032"
+date: "2024-09-04"
+output:
+  pdf_document: default
+  html_document: default
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+## 1. Dataset Description
+
+The Haberman dataset is a collection of data from the survival of patients who had undergone surgery for breast cancer. The dataset consists of 306 instances, each representing a patient. There are four attributes:
+- `age`: Age of the patient at the time of operation.
+- `year`: Year of the operation (year - 1900).
+- `nodes`: Number of positive axillary nodes detected.
+- `survival`: Survival status (1 = survived 5 years or more, 2 = died within 5 years).
+
+The goal is to predict the survival status of patients based on the other three attributes.
+
+## 2. Exploratory Data Analysis (EDA)
+
+Exploratory Data Analysis (EDA) involves a preliminary examination of the dataset to understand its structure and characteristics. In this analysis:
+- We checked the structure of the data using functions like `str()` and `summary()`.
+- We observed that the `survival` attribute is categorical and represents the target variable for classification.
+- Basic summary statistics were reviewed to understand the range and distribution of the numeric attributes (`age`, `year`, `nodes`).
+
+## 3. Data Preprocessing
+
+Preprocessing steps were taken to prepare the data for the neural network model:
+- **Normalization**: The continuous variables (`age`, `year`, `nodes`) were normalized to bring all values into the range [0, 1]. This helps in accelerating the training process and improves the model’s performance.
+- **Factor Conversion**: The target variable `survival` was converted to a factor to facilitate classification.
+
+## 4. Model Selection
+
+### Architecture
+A neural network model was selected for this classification task. The architecture of the model was defined as follows:
+- **Input Layer**: 3 neurons corresponding to the 3 input features (`age`, `year`, `nodes`).
+- **Hidden Layers**: The model includes two hidden layers:
+  - The first hidden layer has 5 neurons.
+  - The second hidden layer has 3 neurons.
+- **Output Layer**: 1 neuron with a sigmoid activation function to predict the binary outcome (survival status).
+
+### Loss Function
+The model used binary cross-entropy as the loss function because it is suitable for binary classification tasks.
+
+### Hyperparameters
+- **Stepmax**: The maximum number of steps for the model's training was set to 1e6 to ensure convergence.
+- **Activation Function**: The hidden layers use the default activation function (`logistic`), and the output layer uses the sigmoid function.
+
+## 5. Model Performance
+
+The model's performance was evaluated using accuracy as the metric:
+- **Accuracy**: The model achieved an accuracy of `50%` on the test dataset. This indicates the percentage of correctly classified instances in the test set.
+
+
+## Load Required Libraries
+```{r}
+library(neuralnet)
+library(caret)
+```
+
+## Download and Prepare the Haberman Dataset
+```{r}
+url <- "https://archive.ics.uci.edu/ml/machine-learning-databases/haberman/haberman.data"
+haberman <- read.csv(url, header = FALSE, col.names = c("age", "year", "nodes", "survival"))
+head(haberman)
+```
+
+## Convert Survival to Binary
+```{r}
+haberman$survival <- as.factor(haberman$survival)
+```
+
+## Normalize the Data
+```{r}
+normalize <- function(x) {
+  return((x - min(x)) / (max(x) - min(x)))
+}
+haberman_norm <- as.data.frame(lapply(haberman[, 1:3], normalize))
+haberman_norm$survival <- haberman$survival
+```
+
+## Split the Data into Training and Testing Sets
+```{r}
+set.seed(123)
+train_indices <- sample(1:nrow(haberman_norm), 0.7 * nrow(haberman_norm))
+train_data <- haberman_norm[train_indices, ]
+test_data <- haberman_norm[-train_indices, ]
+```
+
+## Create Formula for the Neural Network
+```{r}
+nn_formula <- survival ~ age + year + nodes
+```
+
+## Train the Neural Network
+```{r}
+nn_model <- neuralnet(
+  formula = nn_formula,
+  data = train_data,
+  hidden = c(3),
+  linear.output = FALSE,
+  stepmax = 1e6
+)
+```
+
+## Make Predictions on the Test Set
+```{r}
+predict_neuralnet <- function(model, newdata) {
+  output <- compute(model, newdata)$net.result
+  predicted <- ifelse(output > 0.5, "2", "1")
+  return(factor(predicted, levels = levels(haberman$survival)))
+}
+
+predicted_classes <- predict_neuralnet(nn_model, test_data[, c("age", "year", "nodes")])
+```
+
+## Calculate Accuracy
+```{r}
+accuracy <- mean(predicted_classes == test_data$survival)
+cat("Accuracy:", round(accuracy * 100, 2), "%
+")
+```
+
+## Plot the Neural Network
+```{r}
+plot(nn_model)
+```
